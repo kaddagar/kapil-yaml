@@ -1,0 +1,387 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gitpod
+  namespace: git
+  labels:
+    app: mygit
+spec:
+  containers:
+  - name: con1
+    image: quay.io/openshift/origin-hello-openshift
+    ports:
+    - containerPort: 80
+
+:wq --save and exit
+:q! -- exit without save
+
+http://console.redhat.com/openshift
+oc adm policy add-scc-to-user anyuid -z default
+oc run test3 --image openshift/hello-openshift  -- image without root user 
+
+oc run test4 --image nginix 
+
+
+kubectl apply -f pod.yaml
+oc delete pod -n openshift-multus --all
+oc project devops
+oc new-project wordp
+
+oc delete -f pod.yaml
+oc apply -f pod.yaml
+
+oc get pods mypod -o yaml > openshifttest.yaml
+oc get pods --show-labels
+
+
+--------------------------------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: con1
+    image: docker.io/library/nginx:1.25
+    ports:
+    - containerPort: 80
+
+oc apply -f pod.yaml
+
+-----
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+  namespace: devops
+spec:
+  type: ClusterIP
+  selector:
+    app: myapp
+  ports:
+  - port: 80
+    targetPort: 8080 
+
+If application is not accessible 
+1) oc get pods -o wide 
+2) oc get pods --show-labels
+note - service will have IP address
+       Pod will have IP address
+now I will check this service will properly mapped to this service 
+
+oc get svc
+oc descrive svc myapp-svc
+
+check the endpoint  will pod if 
+
+oc run test --image=quay.io/openshift/origin-hello-openshift
+login into pod using oc rsh test
+
+curl http://myapp-svc
+
+
+
+--------
+external communication 
+oc expose svc myapp-svc    --route will be created
+oc expose svc myapp-svc --dry-run= client -o yaml  -- get the yaml
+oc expose svc myapp-svc --dry-run= client -o yaml > route.yaml -- save the yaml
+
+oc apply -f route.yaml
+oc get routes
+
+External User → Router → Route → Service → Pod → Container
+Browser → Route → Service → Pod → nginx
+
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+spec:
+  selector:
+    app.kubernetes.io/name: MyApp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+----
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: myapp   
+  ports:
+   - port: 80
+   
+ oc apply -f service.yaml
+service/myapp-svc created
+
+oc create namespace orange
+oc apply -f deployment1.yaml -n orange
+oc get deployments -A
+oc describe deployment my-app-deployment -n orange
+oc adm policy add-scc-to-user anyuid -z default -n orange
+oc scale deployment my-app-deployment --replicas=0 -n orange
+oc scale deployment my-app-deployment --replicas=1 -n orange
+
+
+oc get svc myapp-svc
+oc get pods -o wide  - will give info pods info
+oc get pods --show-labels - will labels of the pod
+
+
+oc new-project mango
+oc project
+oc create -f kapu1.yaml
+oc delete pod kapu -n mango
+oc get pod kapu -o yaml
+oc get pod kapu -o yaml > kapu2.yaml
+
+ oc run test --image openshift/hello-openshift  - imperative way 
+ oc run test --image=docker.io/openshift/hello-openshift:latest
+ oc run test --image=inginx
+ oc run test --image=docker.io/library/nginx:1.25
+
+To expose service outside 
+oc get svc
+oc expose svc myapp-svc
+dry run oc expose svc myapp-svc --dry-run=client -o yaml
+dry run and save in file oc expose svc myapp-svc --dry-run=client -o yaml > route.yaml 
+
+any modifications to be done do it 
+vi Route  -- oc create -f Route.yaml
+
+-------
+
+-------------node selector
+oc label node crc node=mango
+oc get nodes --show-labels | grep mango
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod-ns
+  namespace: devops
+  labels:
+    app: myapp
+spec:
+  nodeName: crc
+  nodeSelector:
+    node: mango
+  containers:
+  - name: con1
+    image: docker.io/library/nginx:1.25
+    ports:
+      - containerPort: 80
+
+oc label nodes crc node-  remove the label
+
+
+---------------------------------------------------------------
+word press
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+  namespace: wordp
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: con1
+    image: wordpress:latest
+    ports:
+    - containerPort: 80
+
+msql with service
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql
+  namespace: wordp
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: mysql-container
+    image: docker.io/library/mysql:5.7
+    ports:
+      - containerPort: 3306
+    env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: "test123"
+      - name: MYSQL_DATABASE
+        value: "mydb"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-svc
+  namespace: wordp
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
+
+
+Application not working
+
+oc get pods -o wide
+oc get pods --show-labels - check the the label in service under selector
+oc get svc
+oc describe svc
+check for target port of container 
+check pod ip in endpoint 
+
+
+---
+Generally pods will be communicating internally .How to check it 
+
+so login into pod (test the other pod via service )
+
+example
+before this check that selector label that pod name should exist.
+
+login into pod 
+oc rsh test
+curl http://app-svc
+
+
+---
+Route is exposed simple using command 
+oc expose svc 
+but we want yaml of that route use command 
+oc expose svc myapp-svc --dry-run=client -o yaml
+
+oc expose svc myapp-svc --dry-run=client -o yaml > route.yaml  store it locally 
+
+you orginal yaml . if you want vi route.yaml make changes and oc create -f route.yaml
+
+oc get pods mypod-wordpress -o yaml 
+
+
+
+wordpressyaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wp
+  namespace: wordp
+  labels:
+    app: wp
+spec:
+  containers:
+  - name: wp
+    image: docker.io/library/wordpress:latest
+    ports:
+    - containerPort: 80
+    env:
+      - name: WORPRESS_DB_HOST
+        value: "wp"
+      - name: WORDPRESS_DB_USER
+        value: "root"
+      - name: WORDPRESS_DB_PASSWORD
+        value: "test123"
+      - name: WORDPRESS_DB_NAME
+        value: "wordpress" 
+      - name: WORDPRESS_TABLE_PREFIX  
+    - name: mysql
+    image: docker.io/library/mysql:5.7
+     env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: "test123"
+      - name: MYSQL_DATABASE
+        value: "wordpress"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wp-svc
+  namespace: wordp
+spec:
+  selector:
+    app: wp
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+      
+
+
+chatgpt word press
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wp
+  namespace: wordp
+  labels:
+    app: wp
+spec:
+  containers:
+  - name: wp
+    image: docker.io/library/wordpress:latest
+    ports:
+      - containerPort: 80
+    env:
+      - name: WORDPRESS_DB_HOST
+        value: "wp"
+      - name: WORDPRESS_DB_USER
+        value: "root"
+      - name: WORDPRESS_DB_PASSWORD
+        value: "test123"
+      - name: WORDPRESS_DB_NAME
+        value: "wordpress"
+      - name: WORDPRESS_TABLE_PREFIX
+        value: "wp_"
+
+  - name: mysql
+    image: docker.io/library/mysql:5.7
+    env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: "test123"
+      - name: MYSQL_DATABASE
+        value: "wordpress"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wp-svc
+  namespace: wordp
+spec:
+  selector:
+    app: wp
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+
+
+oc expose svc wp-svc
+
+wordpress pod with env variables and service in one yaml 
+sqldb pod env varibales and service in on yaml
+
+MySQL -- ClusterIP and wordpress store or read data will hit mysqlclusterIP 
+
+wordpress cluster IP service will be exposed to route for external communication 
+
+
+
+      
